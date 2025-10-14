@@ -133,6 +133,7 @@ def batch_mode(bib_file: str, output_file: Optional[str] = None) -> int:
 
 def main():
     """Main entry point."""
+    """Main entry point."""
     parser = argparse.ArgumentParser(
         description='Find Google Books IDs for bibliographic entries',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -154,10 +155,16 @@ Examples:
     parser.add_argument('--year', help='Publication year')
     parser.add_argument('--key', help='BibTeX citation key')
     parser.add_argument('--bib', help='Process entire .bib file')
+    parser.add_argument('--augment', help='Augment .bib file with Google Books IDs (modifies file)')
+    parser.add_argument('--dry-run', action='store_true', help='Show what would be done without modifying files')
     parser.add_argument('--output', help='Output file for LaTeX commands')
     parser.add_argument('--version', action='version', version='gbfind 0.1.0')
     
     args = parser.parse_args()
+    
+    # Augment mode
+    if args.augment:
+        return augment_mode(args.augment, args.dry_run)
     
     # Batch mode
     if args.bib:
@@ -190,3 +197,81 @@ Examples:
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
+def augment_mode(bib_file: str, dry_run: bool = False) -> int:
+    """Augment mode - add Google Books IDs to .bib file."""
+    from .augment import augment_bibtex_file
+    
+    print(f"Augmenting bibliography: {bib_file}")
+    print("This will add 'googlebooksid' and 'url' fields to entries.\n")
+    
+    try:
+        content = read_bibtex_file(bib_file)
+    except FileNotFoundError:
+        print(f"Error: File not found: {bib_file}", file=sys.stderr)
+        return 1
+        
+    entries = parse_bibtex_books(content)
+    
+    if not entries:
+        print("No book entries found in bibliography.", file=sys.stderr)
+        return 1
+        
+    print(f"Found {len(entries)} book entries.\n")
+    
+    updates = {}
+    
+    for citation_key, author, title, year in entries:
+        print(f"Searching: {citation_key}")
+        print(f"  {author} - {title} ({year})")
+        
+        try:
+            results = search_google_books(author, title, year)
+        except RuntimeError as e:
+            print(f"  → Error: {e}")
+            continue
+        
+        if results:
+            best = results[0]
+            google_books_id = best['id']
+            
+            status = "✓"
+            if not best['publicDomain'] and best['viewability'] != 'ALL_PAGES':
+                status = "⚠ Limited access"
+                
+            print(f"  → Found: {best['title'][:50]}... [{status}]")
+            print(f"     Will add: googlebooksid = {{{google_books_id}}}")
+            
+            updates[citation_key] = google_books_id
+        else:
+            print(f"  → No results found")
+            
+        print()
+    
+    if not updates:
+        print("No updates to apply.")
+        return 0
+    
+    print("=" * 60)
+    print(f"Ready to update {len(updates)} entries in {bib_file}")
+    
+    if dry_run:
+        print("\n[DRY RUN] No changes made. Remove --dry-run to apply.")
+        return 0
+    
+    # Confirm
+    response = input("\nProceed? [y/N] ").strip().lower()
+    if response != 'y':
+        print("Aborted.")
+        return 0
+    
+    # Apply updates
+    updated_count = augment_bibtex_file(bib_file, updates, add_url=True, backup=True)
+    
+    print(f"\n✓ Updated {updated_count} entries")
+    print(f"✓ Backup saved to {bib_file}.backup")
+    print("\nYour .bib entries now include 'googlebooksid' and 'url' fields.")
+    print("These will appear in your bibliography automatically with BibLaTeX.")
+    
+    return 0
