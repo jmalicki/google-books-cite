@@ -1,0 +1,101 @@
+% google-books-cite.sty
+% LaTeX package for citations with page-level Google Books links
+% Provides transparency about digital source links
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{google-books-cite}[2025/10/14 v0.1 Google Books page citations]
+
+\RequirePackage{xparse}
+\RequirePackage{xstring}
+\RequirePackage{xcolor}
+
+% Configuration: Google Books indicator style
+\newcommand{\gb@indicator}{$^{\text{\tiny GB}}$}  % Default: superscript GB
+\newcommand{\SetGBIndicator}[1]{%
+  \ifstrequal{#1}{superscript}{%
+    \renewcommand{\gb@indicator}{$^{\text{\tiny GB}}$}%
+  }{}%
+  \ifstrequal{#1}{brackets}{%
+    \renewcommand{\gb@indicator}{ [GB]}%
+  }{}%
+  \ifstrequal{#1}{none}{%
+    \renewcommand{\gb@indicator}{}%
+  }{}%
+}
+
+% Configuration: Google Books link color
+\definecolor{gbcolor}{HTML}{008B8B}  % DarkCyan by default
+\newcommand{\SetGBLinkColor}[1]{%
+  \definecolor{gbcolor}{named}{#1}%
+}
+
+% Store Google Books IDs
+\ExplSyntaxOn
+\cs_new:Npn \SetGoogleBooksID #1#2 {
+  \cs_gset:cpn { gb_id_#1: } { #2 }
+}
+\cs_new:Npn \GetGoogleBooksID #1 {
+  \cs_if_exist:cTF { gb_id_#1: } {
+    \use:c { gb_id_#1: }
+  }{}
+}
+\ExplSyntaxOff
+
+% Helper: Extract first page number from citation postnote
+\newcommand{\gb@extractpage}[1]{%
+  \def\gb@pagetext{#1}%
+  \StrSubstitute{\gb@pagetext}{p.~}{}[\gb@clean]%
+  \StrSubstitute{\gb@clean}{pp.~}{}[\gb@clean]%
+  \StrSubstitute{\gb@clean}{ }{}[\gb@clean]%
+  \StrBefore{\gb@clean}{-}[\gb@first]%
+  \StrBefore{\gb@first}{--}[\gb@first]%
+  \ifx\gb@first\empty%
+    \gb@clean%
+  \else%
+    \gb@first%
+  \fi%
+}
+
+% Main command: Google Books parenthetical citation
+\NewDocumentCommand{\gbparencite}{o m}{%
+  \IfNoValueTF{#1}{%
+    % No page number, use regular citation
+    \parencite{#2}%
+  }{%
+    \edef\gb@id{\GetGoogleBooksID{#2}}%
+    \ifx\gb@id\empty%
+      % No Google Books ID, regular citation
+      \parencite[#1]{#2}%
+    \else%
+      % Has Google Books ID, make page clickable with indicator
+      \edef\gb@pagenum{\gb@extractpage{#1}}%
+      (\citeauthor{#2}, \citeyear{#2}, %
+       {\color{gbcolor}\href{https://books.google.com/books?id=\gb@id&pg=PA\gb@pagenum}{#1\gb@indicator}})%
+    \fi%
+  }%
+}
+
+% Text citation variant
+\NewDocumentCommand{\gbtextcite}{o m}{%
+  \IfNoValueTF{#1}{%
+    \textcite{#2}%
+  }{%
+    \edef\gb@id{\GetGoogleBooksID{#2}}%
+    \ifx\gb@id\empty%
+      \textcite[#1]{#2}%
+    \else%
+      \edef\gb@pagenum{\gb@extractpage{#1}}%
+      \citeauthor{#2} (\citeyear{#2}, %
+      {\color{gbcolor}\href{https://books.google.com/books?id=\gb@id&pg=PA\gb@pagenum}{#1\gb@indicator}})%
+    \fi%
+  }%
+}
+
+% Helper command: Generate standard disclaimer footnote
+\newcommand{\gbdisclaimer}[1][Links marked with $^{\text{\tiny GB}}$]{%
+  \footnote{#1 point to Google Books digitized copies of public domain works. 
+  These are provided for reader convenience. Page numbers reference the print 
+  editions listed in the bibliography. Scholars should verify quotations against 
+  authoritative print editions when possible.}%
+}
+
+\endinput

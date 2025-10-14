@@ -1,0 +1,54 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{google-books-cite}
+\usepackage[style=apa,backend=biber]{biblatex}
+\addbibresource{example.bib}
+
+% Register Google Books IDs for your references
+\SetGoogleBooksID{Schopenhauer1969}{NbsVAAAAYAAJ}
+\SetGoogleBooksID{Kant1785}{L9ATAAAAQAAJ}
+
+% Optional: customize appearance
+\SetGBIndicator{superscript}  % or 'brackets' or 'none'
+\SetGBLinkColor{DarkCyan}
+
+\title{Example: Google Books Citations}
+\author{Your Name}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+This document demonstrates the \texttt{google-books-cite} package.
+\gbdisclaimer  % Adds explanatory footnote about GB links
+
+\section{Examples}
+
+% Regular citation (no Google Books ID registered):
+As noted in recent scholarship \parencite[p.~42]{ModernWork2020}, the issue remains debated.
+
+% Google Books citation (page number becomes clickable):
+Schopenhauer argues that satisfaction ``at once makes room for a new one'' 
+\gbparencite[p.~312]{Schopenhauer1969}, creating an endless cycle.
+
+% Text citation variant:
+\gbtextcite[p.~27]{Kant1785} famously defines the good will as good in itself.
+
+% Multiple pages (links to first page):
+The argument develops across several sections 
+\gbparencite[pp.~312--319]{Schopenhauer1969}.
+
+% No page number (behaves like regular citation):
+This theme recurs throughout \gbparencite{Schopenhauer1969}.
+
+\section{Visual Indicators}
+
+Notice that Google Books links are marked with $^{\text{\tiny GB}}$ and 
+appear in a distinct color (teal by default). Regular citations remain 
+black or the default link color.
+
+\printbibliography
+
+\end{document}
+
