@@ -68,9 +68,12 @@ def interactive_mode() -> int:
         return 1
 
 
-def batch_mode(bib_file: str, output_file: Optional[str] = None) -> int:
-    """Batch process a BibTeX file."""
-    print(f"Processing bibliography: {bib_file}")
+def report_mode(bib_file: str) -> int:
+    """
+    Default mode - report what IDs can be found without modifying files.
+    """
+    print(f"Analyzing bibliography: {bib_file}")
+    print("Searching Google Books (read-only, no changes will be made)\n")
     
     try:
         content = read_bibtex_file(bib_file)
@@ -85,118 +88,85 @@ def batch_mode(bib_file: str, output_file: Optional[str] = None) -> int:
         return 1
         
     print(f"Found {len(entries)} book entries.\n")
+    print("=" * 70)
     
-    commands = []
+    found = []
+    ambiguous = []
+    not_found = []
     
     for citation_key, author, title, year in entries:
-        print(f"Searching: {citation_key}")
+        print(f"\n{citation_key}")
         print(f"  {author} - {title} ({year})")
         
         try:
             results = search_google_books(author, title, year)
         except RuntimeError as e:
-            print(f"  → Error: {e}")
+            print(f"  ✗ Error: {e}")
+            not_found.append((citation_key, f"API error: {e}"))
             continue
         
-        if results:
+        if not results:
+            print(f"  ✗ NOT FOUND - No Google Books results")
+            not_found.append((citation_key, "No results from Google Books API"))
+        elif len(results) == 1:
             best = results[0]
-            google_books_id = best['id']
+            status_parts = []
+            if best['publicDomain']:
+                status_parts.append('PUBLIC DOMAIN')
+            if best['viewability'] == 'ALL_PAGES':
+                status_parts.append('Full view')
+            elif best['viewability'] == 'PARTIAL':
+                status_parts.append('Partial view')
+            else:
+                status_parts.append('No preview')
             
-            status = "✓"
-            if not best['publicDomain'] and best['viewability'] != 'ALL_PAGES':
-                status = "⚠ Limited access"
-                
-            print(f"  → Found: {best['title'][:50]}... [{status}]")
-            print(f"     Google Books ID: {google_books_id}")
-            
-            cmd = generate_latex_command(citation_key, google_books_id)
-            commands.append(cmd)
+            status = ' | '.join(status_parts)
+            print(f"  ✓ FOUND: {best['title'][:60]}")
+            print(f"    Google Books ID: {best['id']}")
+            print(f"    Status: {status}")
+            found.append((citation_key, best['id'], status))
         else:
-            print(f"  → No results found")
-            
-        print()
-        
-    if commands:
-        print("=" * 60)
-        print("LaTeX commands for your preamble:\n")
-        for cmd in commands:
-            print(cmd)
-            
-        if output_file:
-            content = generate_latex_file(commands)
-            with open(output_file, 'w') as f:
-                f.write(content)
-            print(f"\nCommands saved to: {output_file}")
+            # Multiple results - ambiguous
+            best = results[0]
+            print(f"  ⚠ AMBIGUOUS - {len(results)} matches found")
+            print(f"    Best match: {best['title'][:60]}")
+            print(f"    Google Books ID: {best['id']}")
+            print(f"    (Use interactive mode to review all matches)")
+            ambiguous.append((citation_key, best['id'], len(results)))
+    
+    # Summary
+    print("\n" + "=" * 70)
+    print(f"\nSUMMARY:")
+    print(f"  ✓ Found: {len(found)}")
+    print(f"  ⚠ Ambiguous: {len(ambiguous)}")
+    print(f"  ✗ Not found: {len(not_found)}")
+    print(f"  Total: {len(entries)}")
+    
+    if found:
+        print(f"\n✓ FOUND ({len(found)}):")
+        for key, gid, status in found:
+            print(f"  {key}: {gid} [{status}]")
+    
+    if ambiguous:
+        print(f"\n⚠ AMBIGUOUS ({len(ambiguous)} - multiple matches):")
+        for key, gid, count in ambiguous:
+            print(f"  {key}: {gid} (best of {count} matches)")
+        print("  Tip: Use interactive mode to review alternatives")
+    
+    if not_found:
+        print(f"\n✗ NOT FOUND ({len(not_found)}):")
+        for key, reason in not_found:
+            print(f"  {key}: {reason}")
+    
+    # Next steps
+    print("\n" + "=" * 70)
+    print("NEXT STEPS:")
+    print(f"  To add these IDs to your .bib file:")
+    print(f"    gbfind --augment {bib_file}")
+    print(f"  To preview changes first:")
+    print(f"    gbfind --augment {bib_file} --dry-run")
     
     return 0
-
-
-def main():
-    """Main entry point."""
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description='Find Google Books IDs for bibliographic entries',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  Interactive mode:
-    gbfind
-    
-  Direct search:
-    gbfind --author "Arthur Schopenhauer" --title "World as Will" --year 1969
-    
-  Batch process BibTeX file:
-    gbfind --bib references.bib --output google-books-ids.tex
-        """
-    )
-    
-    parser.add_argument('--author', help='Author name')
-    parser.add_argument('--title', help='Book title')
-    parser.add_argument('--year', help='Publication year')
-    parser.add_argument('--key', help='BibTeX citation key')
-    parser.add_argument('--bib', help='Process entire .bib file')
-    parser.add_argument('--augment', help='Augment .bib file with Google Books IDs (modifies file)')
-    parser.add_argument('--dry-run', action='store_true', help='Show what would be done without modifying files')
-    parser.add_argument('--output', help='Output file for LaTeX commands')
-    parser.add_argument('--version', action='version', version='gbfind 0.1.0')
-    
-    args = parser.parse_args()
-    
-    # Augment mode
-    if args.augment:
-        return augment_mode(args.augment, args.dry_run)
-    
-    # Batch mode
-    if args.bib:
-        return batch_mode(args.bib, args.output)
-    
-    # Direct search mode
-    if args.author or args.title:
-        try:
-            results = search_google_books(args.author or '', args.title or '', args.year)
-        except RuntimeError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            return 1
-        
-        if not results:
-            print("No results found.", file=sys.stderr)
-            return 1
-            
-        for i, result in enumerate(results, 1):
-            print(format_result(result, i))
-            
-        if args.key and results:
-            cmd = generate_latex_command(args.key, results[0]['id'])
-            print(f"\nLaTeX command:\n  {cmd}")
-            
-        return 0
-    
-    # Interactive mode (default)
-    return interactive_mode()
-
-
-if __name__ == '__main__':
-    sys.exit(main())
 
 
 def augment_mode(bib_file: str, dry_run: bool = False) -> int:
@@ -275,3 +245,154 @@ def augment_mode(bib_file: str, dry_run: bool = False) -> int:
     print("These will appear in your bibliography automatically with BibLaTeX.")
     
     return 0
+
+
+def batch_mode(bib_file: str, output_file: Optional[str] = None) -> int:
+    """Batch mode - generate LaTeX commands (legacy)."""
+    print(f"Processing bibliography: {bib_file}")
+    
+    try:
+        content = read_bibtex_file(bib_file)
+    except FileNotFoundError:
+        print(f"Error: File not found: {bib_file}", file=sys.stderr)
+        return 1
+        
+    entries = parse_bibtex_books(content)
+    
+    if not entries:
+        print("No book entries found in bibliography.", file=sys.stderr)
+        return 1
+        
+    print(f"Found {len(entries)} book entries.\n")
+    
+    commands = []
+    
+    for citation_key, author, title, year in entries:
+        print(f"Searching: {citation_key}")
+        print(f"  {author} - {title} ({year})")
+        
+        try:
+            results = search_google_books(author, title, year)
+        except RuntimeError as e:
+            print(f"  → Error: {e}")
+            continue
+        
+        if results:
+            best = results[0]
+            google_books_id = best['id']
+            
+            status = "✓"
+            if not best['publicDomain'] and best['viewability'] != 'ALL_PAGES':
+                status = "⚠ Limited access"
+                
+            print(f"  → Found: {best['title'][:50]}... [{status}]")
+            print(f"     ID: {google_books_id}")
+            
+            cmd = generate_latex_command(citation_key, google_books_id)
+            commands.append(cmd)
+        else:
+            print(f"  → No results found")
+            
+        print()
+        
+    if commands:
+        print("=" * 60)
+        print("LaTeX commands for your preamble:\n")
+        for cmd in commands:
+            print(cmd)
+            
+        if output_file:
+            content = generate_latex_file(commands)
+            with open(output_file, 'w') as f:
+                f.write(content)
+            print(f"\nCommands saved to: {output_file}")
+    
+    return 0
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Find Google Books IDs for bibliographic entries',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Report mode (safe, default):
+    gbfind references.bib
+    
+  Augment .bib file (adds googlebooksid fields):
+    gbfind --augment references.bib
+    
+  Dry run (preview changes):
+    gbfind --augment references.bib --dry-run
+    
+  Interactive mode:
+    gbfind --interactive
+    
+  Generate LaTeX commands (legacy):
+    gbfind --commands references.bib --output google-books-ids.tex
+        """
+    )
+    
+    parser.add_argument('bibfile', nargs='?', help='BibTeX file to analyze')
+    parser.add_argument('--augment', action='store_true', 
+                       help='Modify .bib file to add Google Books IDs (requires confirmation)')
+    parser.add_argument('--dry-run', action='store_true', 
+                       help='Preview changes without modifying files (use with --augment)')
+    parser.add_argument('--commands', action='store_true',
+                       help='Generate \\SetGoogleBooksID commands (legacy mode)')
+    parser.add_argument('--output', help='Output file for LaTeX commands (use with --commands)')
+    parser.add_argument('--interactive', action='store_true',
+                       help='Interactive mode for single book lookup')
+    parser.add_argument('--author', help='Author name (for direct search)')
+    parser.add_argument('--title', help='Book title (for direct search)')
+    parser.add_argument('--year', help='Publication year (for direct search)')
+    parser.add_argument('--key', help='BibTeX citation key (for direct search)')
+    parser.add_argument('--version', action='version', version='gbfind 0.1.0')
+    
+    args = parser.parse_args()
+    
+    # Interactive mode
+    if args.interactive or (not args.bibfile and not args.author and not args.title):
+        return interactive_mode()
+    
+    # Direct search mode
+    if args.author or args.title:
+        try:
+            results = search_google_books(args.author or '', args.title or '', args.year)
+        except RuntimeError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        
+        if not results:
+            print("No results found.", file=sys.stderr)
+            return 1
+            
+        for i, result in enumerate(results, 1):
+            print(format_result(result, i))
+            
+        if args.key and results:
+            cmd = generate_latex_command(args.key, results[0]['id'])
+            print(f"\nLaTeX command:\n  {cmd}")
+            
+        return 0
+    
+    # Requires bibfile for remaining modes
+    if not args.bibfile:
+        parser.print_help()
+        return 1
+    
+    # Augment mode (modifies file)
+    if args.augment:
+        return augment_mode(args.bibfile, args.dry_run)
+    
+    # Commands mode (legacy - generates LaTeX commands)
+    if args.commands:
+        return batch_mode(args.bibfile, args.output)
+    
+    # Default: Report mode (safe, informational)
+    return report_mode(args.bibfile)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
