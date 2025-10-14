@@ -1,0 +1,58 @@
+[project]
+name = "gbfind"
+version = "0.1.0"
+description = "Find Google Books IDs for LaTeX citations"
+authors = [
+    {name = "Joseph Malicki", email = "joseph@malicki.org"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["latex", "google-books", "citations", "bibtex"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+gbfind = "gbfind.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/jmalicki/google-books-cite"
+Repository = "https://github.com/jmalicki/google-books-cite"
+Issues = "https://github.com/jmalicki/google-books-cite/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gbfind"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
