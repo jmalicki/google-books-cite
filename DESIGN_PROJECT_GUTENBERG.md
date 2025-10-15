@@ -127,35 +127,72 @@ How to choose? Options:
 \pgparencite[chap=3]{Augustine}   % Project Gutenberg
 ```
 
-## Proposed Design
+## Proposed Design (UPDATED)
 
-### Phase 1: Basic Support (Minimum Viable)
+### Phase 1: Basic Support with Optional Chapter Links
 
-1. **BibTeX Field**: Add `gutenbergid = {219}` to entries
-2. **Bibliography Links**: If `gutenbergid` present, make title link to `https://www.gutenberg.org/ebooks/[ID]`
-3. **Inline Citations**: 
-   - For now, `\pgparencite[chap=3]{key}` links to book start + `#chap03` anchor
-   - Syntax: `\pgparencite[§3]{key}` or `\pgparencite[chap=3]{key}`
-4. **Verification**: `gbfind --verify` checks PG IDs resolve (simple HTTP check)
+**BibTeX Fields**:
+```bibtex
+@book{ConradHOD1990,
+  author = {Joseph Conrad},
+  title = {Heart of Darkness},
+  ...
+  gutenbergid = {219},           % Required for PG links
+  gutenbergchapter = {chap01},   % Optional: specific chapter anchor
+}
+```
 
-### Phase 2: Enhanced Section Linking
+**Citation Behavior**:
 
-1. **Mapping File**: Optional `[key].pgmap` files that map pages to chapters
-   ```
-   # Augustine-Confessions.pgmap
-   p1-20: chap01
-   p21-45: chap02
-   ```
-2. **Smart Linking**: If `.pgmap` exists, `\gbparencite[p.~47]{key}` can use page→chapter map
-3. **Fallback**: Without `.pgmap`, falls back to chapter-only or book start
+1. **Bibliography Links**: 
+   - Always link to main book page: `https://www.gutenberg.org/ebooks/[ID]`
 
-### Phase 3: Unified Interface
+2. **Inline Citations**:
+   - `\gbparencite{key}` → book-level link (no page/chapter)
+   - `\gbparencite[p.~47]{key}` → If `gutenbergchapter` in `.bib`, link to that chapter; otherwise book start
+   - `\gbparencite[chap=3]{key}` → Override: link to specified chapter (chap03)
+   - `\gbparencite[§IV]{key}` → Link to chapter IV (using PG's anchor format)
 
-1. **Single Command**: `\gbparencite` auto-detects source
-   - Uses GB if `googlebooksid` present
-   - Uses PG if `gutenbergid` present
-   - Prefers GB if both (better page fidelity)
-2. **Override**: `\gbparencite[p.~47, source=pg]{key}` forces PG
+**Chapter Anchor Format**:
+- Most PG HTML uses: `#chap01`, `#chap02`, etc.
+- Some use: `#link2H_4_0001` or custom IDs
+- Our `.bib` field stores the exact anchor (user-specified)
+
+**Example URL**:
+```
+https://www.gutenberg.org/cache/epub/219/pg219-images.html#chap01
+```
+
+**Advantages**:
+- ✅ Book-level links work for all PG works (zero configuration)
+- ✅ Chapter-level links available when user wants precision
+- ✅ User controls anchor through `.bib` field (handles PG's varying formats)
+- ✅ No complex page→chapter mapping needed
+
+### Phase 2: Auto-Detection and Unified Interface
+
+**Single Command**: `\gbparencite` auto-detects source from `.bib` fields
+- If `googlebooksid` → use Google Books (page-level links)
+- If `gutenbergid` → use Project Gutenberg (book or chapter-level)
+- If both → prefer GB for page precision, unless `source=pg` specified
+
+**Syntax**:
+```latex
+\gbparencite[p.~47]{Augustine}           % Auto: uses GB if available
+\gbparencite[chap=3]{Augustine}          % Auto: uses PG if available
+\gbparencite[p.~47, source=pg]{key}      % Force PG (uses gutenbergchapter if present)
+```
+
+### Phase 3: Enhanced with Gutendex Search
+
+1. **Finding PG IDs**: Use Gutendex API (https://gutendex.com/)
+   - `https://gutendex.com/books?search=heart darkness conrad`
+   - Returns PG ID, title, authors, languages
+2. **gbfind Integration**: 
+   - `gbfind paper/everyone.bib` searches both GB and PG
+   - Reports which source has better match
+   - User chooses which to use
+3. **Verification**: Check PG IDs resolve and match metadata
 
 ## Questions for User
 
