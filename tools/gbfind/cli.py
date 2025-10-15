@@ -406,50 +406,34 @@ if __name__ == '__main__':
 def linkgen_mode(jobname: str, bib_file: Optional[str] = None) -> int:
     """Generate .gblinks.tex from .gbaux file."""
     from .linkgen import generate_links_file
-    
-    gbaux_file = f"{jobname}.gbaux"
-    output_file = f"{jobname}.gblinks.tex"
-    
-    # Find .bib file
-    if not bib_file:
-        # Look for .bib in same directory
-        import os
-        dirname = os.path.dirname(jobname) or '.'
-        bib_files = [f for f in os.listdir(dirname) if f.endswith('.bib')]
-        if not bib_files:
-            print(f"Error: No .bib file found. Specify with --bib", file=sys.stderr)
-            return 1
-        bib_file = os.path.join(dirname, bib_files[0])
-        print(f"Using bibliography: {bib_file}")
-    
-    try:
-        count = generate_links_file(gbaux_file, bib_file, output_file)
-        print(f"\n✓ Generated {count} Google Books links")
-        print(f"✓ Output: {output_file}")
-        print("\nRun LaTeX again to include the links.")
-        return 0
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        print(f"\nMake sure to run LaTeX first to generate {gbaux_file}", file=sys.stderr)
-        return 1
-
-
-def linkgen_mode(jobname: str, bib_file: Optional[str] = None) -> int:
-    """Generate .gblinks.tex from .gbaux file."""
-    from .linkgen import generate_links_file
     import os
+    import re
     
     gbaux_file = f"{jobname}.gbaux"
     output_file = f"{jobname}.gblinks.tex"
     
     # Find .bib file if not specified
     if not bib_file:
-        dirname = os.path.dirname(jobname) or '.'
-        bib_files = [f for f in os.listdir(dirname) if f.endswith('.bib')]
-        if not bib_files:
-            print(f"Error: No .bib file found. Specify with --bib", file=sys.stderr)
-            return 1
-        bib_file = os.path.join(dirname, bib_files[0])
+        # First try to find .bib from \addbibresource in the .tex file
+        tex_file = f"{jobname}.tex"
+        if os.path.exists(tex_file):
+            with open(tex_file, 'r', encoding='utf-8') as f:
+                tex_content = f.read()
+            match = re.search(r'\\addbibresource\{([^}]+)\}', tex_content)
+            if match:
+                bib_filename = match.group(1)
+                dirname = os.path.dirname(jobname) or '.'
+                bib_file = os.path.join(dirname, bib_filename)
+        
+        # Fallback: look for any .bib in same directory
+        if not bib_file or not os.path.exists(bib_file):
+            dirname = os.path.dirname(jobname) or '.'
+            bib_files = [f for f in os.listdir(dirname) if f.endswith('.bib')]
+            if not bib_files:
+                print(f"Error: No .bib file found. Specify with --bib", file=sys.stderr)
+                return 1
+            bib_file = os.path.join(dirname, sorted(bib_files)[-1])  # Prefer 'everyone' over 'references'
+        
         print(f"Using bibliography: {bib_file}")
     
     try:
