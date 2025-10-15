@@ -1,0 +1,18 @@
+\documentclass{article}
+\usepackage{hyperref}
+
+\begin{document}
+
+% Define a link manually like gblinks.tex does
+\expandafter\gdef\csname gblink@Test@p.~312\endcsname{https://books.google.com/books?id=ABC&pg=PA312}
+
+% Test if it exists
+\ifcsname gblink@Test@p.~312\endcsname
+  Link exists! URL: \csname gblink@Test@p.~312\endcsname
+  
+  Clickable: \href{\csname gblink@Test@p.~312\endcsname}{Click page 312}
+\else
+  Link does not exist
+\fi
+
+\end{document}

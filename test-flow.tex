@@ -1,0 +1,34 @@
+\documentclass{article}
+\makeatletter
+
+% Load links
+\input{test-gb.gblinks.tex}
+
+% Define getters
+\newcommand{\getgblink}[2]{\csname gblink@#1@#2\endcsname}
+\newcommand{\ifgblink}[2]{%
+  \ifcsname gblink@#1@#2\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\makeatother
+
+\begin{document}
+
+Step 1: Does link exist? 
+\ifgblink{Schopenhauer1969}{p.~312}{YES-FOUND}{NO-NOT-FOUND}
+
+Step 2: What's the value? 
+VALUE=[\getgblink{Schopenhauer1969}{p.~312}]
+
+Step 3: Use in conditional:
+\ifgblink{Schopenhauer1969}{p.~312}{
+  The link exists and the value is: [\getgblink{Schopenhauer1969}{p.~312}]
+}{
+  Link does not exist!
+}
+
+\end{document}

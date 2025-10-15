@@ -1,0 +1,26 @@
+\documentclass{article}
+\usepackage{xparse}
+\usepackage{xstring}
+
+% Test expandable version
+\NewDocumentCommand{\testexpand}{m}{%
+  \StrSubstitute{#1}{p.~}{}[\result]%
+  \result%
+}
+
+% Test with edef
+\NewDocumentCommand{\testedef}{m}{%
+  \begingroup
+  \edef\temp{#1}%
+  \StrSubstitute{\temp}{p.~}{}[\clean]%
+  \clean%
+  \endgroup
+}
+
+\begin{document}
+
+Test 1: \testexpand{p.~123}
+
+Test 2: \testedef{p.~123}
+
+\end{document}

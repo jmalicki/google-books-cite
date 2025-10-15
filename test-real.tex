@@ -1,0 +1,15 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\definecolor{gbcolor}{HTML}{008B8B}
+\makeatletter
+\input{test-real.gblinks.tex}
+\newcommand{\getgblink}[2]{\csname gblink@#1@#2\endcsname}
+\makeatother
+\begin{document}
+Click this to go to Schopenhauer page 312:
+
+{\color{gbcolor}\href{\getgblink{Schopenhauer}{p.~312}}{p. 312$^{\text{\tiny GB}}$}}
+
+(This should open Google Books at the actual page!)
+\end{document}

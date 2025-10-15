@@ -1,0 +1,36 @@
+\documentclass{article}
+\usepackage{xparse}
+\usepackage{xstring}
+
+\def\gb@extractpageaux#1{%
+  \StrSubstitute{#1}{p.~}{}[\gb@a]%
+  \StrSubstitute{\gb@a}{pp.~}{}[\gb@b]%
+  \StrSubstitute{\gb@b}{ }{}[\gb@c]%
+  \StrBefore{\gb@c}{-}[\gb@d]%
+  \IfStrEq{\gb@d}{}{%
+    \let\gb@finalpage\gb@c
+  }{%
+    \let\gb@finalpage\gb@d
+  }%
+}
+
+\newcommand{\testextract}[1]{%
+  \gb@extractpageaux{#1}%
+  Input: \texttt{#1} → Output: \texttt{\gb@finalpage}
+}
+
+\begin{document}
+
+\testextract{p.~47}
+
+\testextract{pp.~123-456}
+
+\testextract{123}
+
+% Now test in edef context
+\gb@extractpageaux{p.~47}
+\edef\testurl{https://books.google.com/books?id=ABC\&pg=PA\gb@finalpage}
+
+URL: \texttt{\testurl}
+
+\end{document}

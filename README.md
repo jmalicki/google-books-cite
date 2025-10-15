@@ -1,5 +1,11 @@
 # google-books-cite
 
+**⚠️ NOT AFFILIATED WITH GOOGLE**  
+This is an independent, open-source LaTeX package created by researchers for researchers.  
+It is not created, maintained, endorsed, or supported by Google LLC.
+
+---
+
 LaTeX package for creating citations with direct page-level links to Google Books.
 
 ## Motivation
@@ -16,22 +22,43 @@ This package automates the process: page numbers in citations become clickable l
 - ✅ **Works with BibLaTeX** and standard citation commands
 - ✅ **Simple API** - just register Google Books IDs and use `\gbparencite` instead of `\parencite`
 
+## Quick Start
+
+See [WORKFLOW.md](WORKFLOW.md) for complete step-by-step guide.
+
+**TL;DR:**
+```bash
+# 1. Add Google Books IDs to your bibliography
+gbfind --augment references.bib
+
+# 2. In your .tex files, use \gbparencite instead of \parencite
+\gbparencite[p.~312]{CitationKey}
+
+# 3. Compile with two-pass workflow
+xelatex main.tex
+biber main
+gbfind --make-links main
+xelatex main.tex
+```
+
 ## Installation
 
-### As a Git Submodule (Recommended for Projects)
+### As a Git Submodule (Recommended)
 
 ```bash
 git submodule add https://github.com/jmalicki/google-books-cite.git
+cd google-books-cite/tools && uv pip install -e .
 ```
 
 Then in your LaTeX document:
 ```latex
-\usepackage{google-books-cite}
+\usepackage{google-books-cite/google-books-cite}
 ```
 
 ### Manual Installation
 
-Copy `google-books-cite.sty` to your project directory or to your local TeX tree.
+1. Copy `google-books-cite.sty` to your project or local TeX tree
+2. Install Python tool: `cd tools && pip install -e .`
 
 ## Usage
 

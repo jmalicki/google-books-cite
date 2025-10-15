@@ -1,0 +1,18 @@
+\documentclass{article}
+\usepackage{xstring}
+
+\begin{document}
+
+% Test 1: Direct usage
+\StrSubstitute{p.~123}{p.~}{}[\result]
+Result: \result
+
+% Test 2: In macro
+\newcommand{\testmacro}[1]{%
+  \StrSubstitute{#1}{p.~}{}[\clean]%
+  Result: \clean%
+}
+
+\testmacro{p.~456}
+
+\end{document}

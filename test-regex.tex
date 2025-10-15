@@ -1,0 +1,35 @@
+\documentclass{article}
+\usepackage{xparse}
+
+\ExplSyntaxOn
+% Define the function
+\tl_new:N \l_gb_page_tl
+\cs_new:Npn \gb_extract_page:n #1 {
+  \tl_set:Nn \l_gb_page_tl {#1}
+  % Remove p.~ or pp.~
+  \regex_replace_once:nnN { pp?\.\~ } {} \l_gb_page_tl
+  % Remove spaces
+  \regex_replace_all:nnN { \  } {} \l_gb_page_tl
+  % Extract before dash
+  \regex_replace_once:nnN { \-\- .* } {} \l_gb_page_tl
+  \regex_replace_once:nnN { \- .* } {} \l_gb_page_tl
+  % Expand to use
+  \tl_use:N \l_gb_page_tl
+}
+\ExplSyntaxOff
+
+\newcommand{\testpage}[1]{%
+  \ExplSyntaxOn
+  Input:~\texttt{#1}~→~Output:~\texttt{\gb_extract_page:n {#1}}
+  \ExplSyntaxOff
+}
+
+\begin{document}
+
+\testpage{p.~47}
+
+\testpage{pp.~123-456}
+
+\testpage{pp.~123--456}
+
+\end{document}

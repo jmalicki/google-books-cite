@@ -1,0 +1,19 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{./google-books-cite}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{example.bib}
+
+\SetGoogleBooksID{Schopenhauer1969}{NbsVAAAAYAAJ}
+
+\begin{document}
+
+Debug: Direct href test
+
+\href{https://books.google.com/books?id=ABC&pg=PA312}{Click here}
+
+Now test gbparencite:
+
+\gbparencite[p.~312]{Schopenhauer1969}
+
+\end{document}

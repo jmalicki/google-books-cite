@@ -1,78 +1,80 @@
 % google-books-cite.sty
-% LaTeX package for citations with page-level Google Books links
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{google-books-cite}[2025/10/14 v0.4 Google Books page citations]
+\ProvidesPackage{google-books-cite}[2025/10/14 v2.2 Google Books page citations]
 
 \RequirePackage{xparse}
 \RequirePackage{amsmath}
-\RequirePackage{xstring}
 \RequirePackage{xcolor}
+\RequirePackage{hyperref}
+
+\makeatletter
 
 % Configuration
 \newcommand{\gb@indicator}{$^{\text{\tiny GB}}$}
 \definecolor{gbcolor}{HTML}{008B8B}
 
-% Simple ID storage using csname
-\newcommand{\SetGoogleBooksID}[2]{%
-  \expandafter\gdef\csname gbid@#1\endcsname{#2}%
+% Legacy (no-op)
+\newcommand{\SetGoogleBooksID}[2]{}
+
+% Auxiliary file
+\newwrite\gb@auxfile
+\AtBeginDocument{%
+  \immediate\openout\gb@auxfile=\jobname.gbaux
+  \immediate\write\gb@auxfile{[}%
+}
+\newif\ifgb@firstentry
+\gb@firstentrytrue
+\AtEndDocument{%
+  \immediate\write\gb@auxfile{]}%
+  \immediate\closeout\gb@auxfile
 }
 
-\newcommand{\GetGoogleBooksID}[1]{%
-  \ifcsname gbid@#1\endcsname
-    \csname gbid@#1\endcsname
+% Write JSON entry
+\newcommand{\gb@writejson}[2]{%
+  \ifgb@firstentry
+    \gb@firstentryfalse
+  \else
+    \immediate\write\gb@auxfile{,}%
   \fi
+  \immediate\write\gb@auxfile{{"key": "#1", "page": "#2"}}%
 }
 
-% Check if ID exists
-\newcommand{\ifgbid}[1]{%
-  \ifcsname gbid@#1\endcsname
+% Check if link exists
+\newcommand{\ifgblink}[2]{%
+  \ifcsname gblink@#1@#2\endcsname
     \expandafter\@firstoftwo
   \else
     \expandafter\@secondoftwo
   \fi
 }
 
-% Extract page number helper
-\def\gb@extractpageaux#1{%
-  \StrSubstitute{#1}{p.~}{}[\gb@a]%
-  \StrSubstitute{\gb@a}{pp.~}{}[\gb@b]%
-  \StrSubstitute{\gb@b}{ }{}[\gb@c]%
-  \StrBefore{\gb@c}{-}[\gb@d]%
-  \IfStrEq{\gb@d}{}{%
-    \let\gb@finalpage\gb@c
-  }{%
-    \let\gb@finalpage\gb@d
-  }%
+\newcommand{\getgblink}[2]{%
+  \csname gblink@#1@#2\endcsname
 }
 
-% Main citation command
+% Citation commands
 \NewDocumentCommand{\gbparencite}{o m}{%
   \IfNoValueTF{#1}{%
     \parencite{#2}%
   }{%
-    \ifgbid{#2}{%
-      % Has Google Books ID
-      \gb@extractpageaux{#1}%
-      \edef\gb@url{https://books.google.com/books?id=\GetGoogleBooksID{#2}\&pg=PA\gb@finalpage}%
+    \gb@writejson{#2}{#1}%
+    \ifgblink{#2}{#1}{%
       (\citeauthor{#2}, \citeyear{#2}, %
-       {\color{gbcolor}\href{\gb@url}{#1\gb@indicator}})%
+       {\color{gbcolor}\href{\getgblink{#2}{#1}}{#1\gb@indicator}})%
     }{%
-      % No ID, regular citation
       \parencite[#1]{#2}%
     }%
   }%
 }
 
-% Text citation variant
 \NewDocumentCommand{\gbtextcite}{o m}{%
   \IfNoValueTF{#1}{%
     \textcite{#2}%
   }{%
-    \ifgbid{#2}{%
-      \gb@extractpageaux{#1}%
-      \edef\gb@url{https://books.google.com/books?id=\GetGoogleBooksID{#2}\&pg=PA\gb@finalpage}%
+    \gb@writejson{#2}{#1}%
+    \ifgblink{#2}{#1}{%
       \citeauthor{#2} (\citeyear{#2}, %
-      {\color{gbcolor}\href{\gb@url}{#1\gb@indicator}})%
+       {\color{gbcolor}\href{\getgblink{#2}{#1}}{#1\gb@indicator}})%
     }{%
       \textcite[#1]{#2}%
     }%
@@ -84,4 +86,10 @@
   copies. Page numbers reference print editions in the bibliography.}%
 }
 
+% Include links file
+\IfFileExists{\jobname.gblinks.tex}{%
+  \input{\jobname.gblinks.tex}%
+}{}
+
+\makeatother
 \endinput

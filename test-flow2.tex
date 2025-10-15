@@ -1,0 +1,32 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\definecolor{gbcolor}{HTML}{008B8B}
+
+\makeatletter
+\input{test-gb.gblinks.tex}
+
+\newcommand{\getgblink}[2]{\csname gblink@#1@#2\endcsname}
+\newcommand{\ifgblink}[2]{%
+  \ifcsname gblink@#1@#2\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\newcommand{\testcite}[2]{%
+  \ifgblink{#1}{#2}{%
+    (Author, 2025, {\color{gbcolor}\href{\getgblink{#1}{#2}}{#2$^{\text{\tiny GB}}$}})%
+  }{%
+    (Author, 2025, #2) [no link]%
+  }%
+}
+
+\makeatother
+
+\begin{document}
+
+Test citation: \testcite{Schopenhauer1969}{p.~312}
+
+\end{document}

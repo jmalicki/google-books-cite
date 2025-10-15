@@ -337,6 +337,7 @@ Examples:
     parser.add_argument('bibfile', nargs='?', help='BibTeX file to analyze')
     parser.add_argument('--augment', action='store_true', 
                        help='Modify .bib file to add Google Books IDs (requires confirmation)')
+    parser.add_argument('--make-links', metavar='JOBNAME', help='Generate .gblinks.tex from .gbaux file (e.g., paper/main)')
     parser.add_argument('--dry-run', action='store_true', 
                        help='Preview changes without modifying files (use with --augment)')
     parser.add_argument('--commands', action='store_true',
@@ -382,6 +383,10 @@ Examples:
         parser.print_help()
         return 1
     
+    # Link generation mode
+    if args.make_links:
+        return linkgen_mode(args.make_links, None)
+    
     # Augment mode (modifies file)
     if args.augment:
         return augment_mode(args.bibfile, args.dry_run)
@@ -396,3 +401,64 @@ Examples:
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
+def linkgen_mode(jobname: str, bib_file: Optional[str] = None) -> int:
+    """Generate .gblinks.tex from .gbaux file."""
+    from .linkgen import generate_links_file
+    
+    gbaux_file = f"{jobname}.gbaux"
+    output_file = f"{jobname}.gblinks.tex"
+    
+    # Find .bib file
+    if not bib_file:
+        # Look for .bib in same directory
+        import os
+        dirname = os.path.dirname(jobname) or '.'
+        bib_files = [f for f in os.listdir(dirname) if f.endswith('.bib')]
+        if not bib_files:
+            print(f"Error: No .bib file found. Specify with --bib", file=sys.stderr)
+            return 1
+        bib_file = os.path.join(dirname, bib_files[0])
+        print(f"Using bibliography: {bib_file}")
+    
+    try:
+        count = generate_links_file(gbaux_file, bib_file, output_file)
+        print(f"\n✓ Generated {count} Google Books links")
+        print(f"✓ Output: {output_file}")
+        print("\nRun LaTeX again to include the links.")
+        return 0
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        print(f"\nMake sure to run LaTeX first to generate {gbaux_file}", file=sys.stderr)
+        return 1
+
+
+def linkgen_mode(jobname: str, bib_file: Optional[str] = None) -> int:
+    """Generate .gblinks.tex from .gbaux file."""
+    from .linkgen import generate_links_file
+    import os
+    
+    gbaux_file = f"{jobname}.gbaux"
+    output_file = f"{jobname}.gblinks.tex"
+    
+    # Find .bib file if not specified
+    if not bib_file:
+        dirname = os.path.dirname(jobname) or '.'
+        bib_files = [f for f in os.listdir(dirname) if f.endswith('.bib')]
+        if not bib_files:
+            print(f"Error: No .bib file found. Specify with --bib", file=sys.stderr)
+            return 1
+        bib_file = os.path.join(dirname, bib_files[0])
+        print(f"Using bibliography: {bib_file}")
+    
+    try:
+        count = generate_links_file(gbaux_file, bib_file, output_file)
+        print(f"\n✓ Generated {count} Google Books links")
+        print(f"✓ Output: {output_file}")
+        print("\nRun LaTeX again to include the links.")
+        return 0
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        print(f"\nMake sure to run LaTeX first to generate {gbaux_file}", file=sys.stderr)
+        return 1

@@ -1,0 +1,33 @@
+\documentclass{article}
+\usepackage{hyperref}
+\makeatletter
+
+% Load the link definition
+\input{test-gb.gblinks.tex}
+
+% Test retrieval
+\newcommand{\getgblink}[2]{\csname gblink@#1@#2\endcsname}
+
+% Test conditional
+\newcommand{\ifgblink}[2]{%
+  \ifcsname gblink@#1@#2\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\makeatother
+
+\begin{document}
+
+Test 1: Does link exist?
+\ifgblink{Schopenhauer1969}{p.~312}{YES}{NO}
+
+Test 2: Get URL:
+[\getgblink{Schopenhauer1969}{p.~312}]
+
+Test 3: Use in href:
+\href{\getgblink{Schopenhauer1969}{p.~312}}{Click to page 312}
+
+\end{document}

@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage{hyperref}
+
+% Load the link definition
+\expandafter\gdef\csname gblink@Test@p.~312\endcsname{https://books.google.com/books?id=ABC&pg=PA312}
+
+% Test if the check works
+\newcommand{\ifgblink}[2]{%
+  \ifcsname gblink@#1@#2\endcsname
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+\newcommand{\getgblink}[2]{%
+  \csname gblink@#1@#2\endcsname
+}
+
+\begin{document}
+
+Test if link exists:
+\ifgblink{Test}{p.~312}{YES - link exists}{NO - link missing}
+
+Get URL: \getgblink{Test}{p.~312}
+
+Clickable: \href{\getgblink{Test}{p.~312}}{Click me}
+
+\end{document}

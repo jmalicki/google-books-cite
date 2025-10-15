@@ -1,0 +1,36 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{xcolor}
+
+\ExplSyntaxOn
+
+% Test page extraction
+\tl_new:N \l_gb_page_tl
+\cs_new:Npn \gb_extract_page:n #1 {
+  \tl_set:Nn \l_gb_page_tl {#1}
+  \regex_replace_once:nnN { pp? \. \~ } { } \l_gb_page_tl
+  \regex_replace_all:nnN { \  } { } \l_gb_page_tl
+  \regex_replace_once:nnN { \-\- .* } { } \l_gb_page_tl
+  \regex_replace_once:nnN { \- .* } { } \l_gb_page_tl
+  \tl_use:N \l_gb_page_tl
+}
+
+\NewDocumentCommand{\testextract}{ m }{
+  Page~from~``#1'':~[\gb_extract_page:n {#1}]
+  
+  Now~test~in~URL:
+  \tl_set:Nx \l_tmpa_tl { \gb_extract_page:n {#1} }
+  \tl_set:Nx \l_tmpb_tl { https://example.com/page= \l_tmpa_tl }
+  URL:~\tl_use:N \l_tmpb_tl
+}
+
+\ExplSyntaxOff
+
+\begin{document}
+
+\testextract{p.~312}
+
+\end{document}
