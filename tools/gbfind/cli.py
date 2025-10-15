@@ -310,6 +310,100 @@ def batch_mode(bib_file: str, output_file: Optional[str] = None) -> int:
     return 0
 
 
+def verify_mode(bib_file: str) -> int:
+    """Verify existing Google Books IDs in bibliography."""
+    from .verify import verify_google_books_id
+    from .bibtex import parse_bibtex_books, read_bibtex_file
+    import re
+    
+    print("=== Google Books ID Verification ===")
+    print(f"Verifying IDs in: {bib_file}\n")
+    
+    try:
+        content = read_bibtex_file(bib_file)
+    except FileNotFoundError:
+        print(f"Error: File not found: {bib_file}", file=sys.stderr)
+        return 1
+    
+    # Find all entries with Google Books IDs
+    pattern = r'@book\{([^,]+),.*?googlebooksid\s*=\s*\{([^}]+)\}'
+    matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+    
+    if not matches:
+        print("No Google Books IDs found in bibliography.")
+        return 0
+    
+    print(f"Found {len(matches)} entries with Google Books IDs\n")
+    
+    # Also parse for metadata
+    entries_dict = {}
+    entries = parse_bibtex_books(content)
+    for citation_key, author, title, year in entries:
+        entries_dict[citation_key] = {'author': author, 'title': title, 'year': year}
+    
+    verified = []
+    mismatched = []
+    invalid = []
+    
+    for citation_key, book_id in matches:
+        print(f"Verifying: {citation_key}")
+        print(f"  Google Books ID: {book_id}")
+        
+        # Get expected metadata
+        expected = entries_dict.get(citation_key, {})
+        
+        # Verify the ID
+        result = verify_google_books_id(
+            book_id,
+            expected_author=expected.get('author'),
+            expected_title=expected.get('title'),
+            expected_year=expected.get('year')
+        )
+        
+        if not result['valid']:
+            print(f"  ✗ INVALID: {result['error']}")
+            invalid.append((citation_key, book_id, result['error']))
+        elif not result['matches']:
+            print(f"  ⚠ MISMATCH: ID resolves but doesn't match expected book")
+            print(f"    Expected: {expected.get('author')} - {expected.get('title')} ({expected.get('year')})")
+            print(f"    Got: {', '.join(result['authors'])} - {result['title']} ({result['year']})")
+            details = result['match_details']
+            if 'author' in details and not details['author']:
+                print(f"      Author mismatch")
+            if 'title' in details and not details['title']:
+                print(f"      Title mismatch")
+            if 'year' in details and not details['year']:
+                print(f"      Year mismatch (>{3} years difference)")
+            mismatched.append((citation_key, book_id, result))
+        else:
+            print(f"  ✓ VERIFIED: {result['title']}")
+            print(f"    Authors: {', '.join(result['authors'])}")
+            print(f"    Year: {result['year']}")
+            verified.append((citation_key, book_id))
+        
+        print()
+    
+    # Summary
+    print("=" * 70)
+    print(f"\nSUMMARY:")
+    print(f"  ✓ Verified: {len(verified)}")
+    print(f"  ⚠ Mismatched: {len(mismatched)}")
+    print(f"  ✗ Invalid: {len(invalid)}")
+    print(f"  Total: {len(matches)}")
+    
+    if mismatched:
+        print(f"\n⚠ MISMATCHED IDS:")
+        for key, book_id, _ in mismatched:
+            print(f"  {key}: {book_id}")
+    
+    if invalid:
+        print(f"\n✗ INVALID IDS:")
+        for key, book_id, error in invalid:
+            print(f"  {key}: {book_id} ({error})")
+    
+    return 0
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -337,6 +431,8 @@ Examples:
     parser.add_argument('bibfile', nargs='?', help='BibTeX file to analyze')
     parser.add_argument('--augment', action='store_true', 
                        help='Modify .bib file to add Google Books IDs (requires confirmation)')
+    parser.add_argument('--verify', action='store_true',
+                       help='Verify existing Google Books IDs in .bib file against actual books')
     parser.add_argument('--make-links', metavar='JOBNAME', help='Generate .gblinks.tex from .gbaux file (e.g., paper/main)')
     parser.add_argument('--dry-run', action='store_true', 
                        help='Preview changes without modifying files (use with --augment)')
@@ -386,6 +482,10 @@ Examples:
     if not args.bibfile:
         parser.print_help()
         return 1
+    
+    # Verify mode (check existing IDs)
+    if args.verify:
+        return verify_mode(args.bibfile)
     
     # Augment mode (modifies file)
     if args.augment:
