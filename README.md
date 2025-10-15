@@ -1,12 +1,9 @@
 # google-books-cite
 
-**⚠️ NOT AFFILIATED WITH GOOGLE**  
-This is an independent, open-source LaTeX package created by researchers for researchers.  
-It is not created, maintained, endorsed, or supported by Google LLC.
+**⚠️ NOT AFFILIATED WITH GOOGLE OR PROJECT GUTENBERG**  
+This is an independent, open-source LaTeX package created by researchers for researchers.
 
----
-
-LaTeX package for creating citations with direct page-level links to Google Books.
+A LaTeX package for adding links to digitized book copies in citations while maintaining classical print-style formatting. The "**gb**" abbreviation serendipitously serves both **G**oogle **B**ooks and Project **G**uten**b**erg.
 
 ## Motivation
 
