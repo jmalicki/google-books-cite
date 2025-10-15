@@ -353,6 +353,10 @@ Examples:
     
     args = parser.parse_args()
     
+    # Link generation mode (highest priority - doesn't need bibfile)
+    if args.make_links:
+        return linkgen_mode(args.make_links, None)
+    
     # Interactive mode
     if args.interactive or (not args.bibfile and not args.author and not args.title):
         return interactive_mode()
@@ -382,10 +386,6 @@ Examples:
     if not args.bibfile:
         parser.print_help()
         return 1
-    
-    # Link generation mode
-    if args.make_links:
-        return linkgen_mode(args.make_links, None)
     
     # Augment mode (modifies file)
     if args.augment:
