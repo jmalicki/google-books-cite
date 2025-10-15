@@ -6,18 +6,72 @@ import time
 from typing import Dict, Optional
 
 
-def verify_google_books_id(book_id: str, retry_delay: float = 0.5) -> Dict[str, any]:
+def normalize_string(s: str) -> str:
+    """Normalize a string for fuzzy comparison."""
+    import re
+    # Remove punctuation, lowercase, strip whitespace
+    s = re.sub(r'[^\w\s]', '', s.lower())
+    # Collapse multiple spaces
+    s = re.sub(r'\s+', ' ', s)
+    return s.strip()
+
+
+def fuzzy_match(str1: str, str2: str, threshold: float = 0.6) -> bool:
     """
-    Verify that a Google Books ID resolves to a valid book.
+    Check if two strings are similar enough.
+    
+    Args:
+        str1, str2: Strings to compare
+        threshold: Similarity threshold (0.0-1.0)
+        
+    Returns:
+        True if strings are similar enough
+    """
+    norm1 = normalize_string(str1)
+    norm2 = normalize_string(str2)
+    
+    # Simple containment check
+    if norm1 in norm2 or norm2 in norm1:
+        return True
+    
+    # Word overlap check
+    words1 = set(norm1.split())
+    words2 = set(norm2.split())
+    
+    if not words1 or not words2:
+        return False
+    
+    overlap = len(words1 & words2)
+    similarity = overlap / min(len(words1), len(words2))
+    
+    return similarity >= threshold
+
+
+def verify_google_books_id(
+    book_id: str, 
+    expected_author: Optional[str] = None,
+    expected_title: Optional[str] = None,
+    expected_year: Optional[str] = None,
+    retry_delay: float = 0.5
+) -> Dict[str, any]:
+    """
+    Verify that a Google Books ID resolves to a valid book and optionally check if it matches expected metadata.
     
     Args:
         book_id: Google Books ID to verify
+        expected_author: Expected author name (for matching)
+        expected_title: Expected title (for matching)
+        expected_year: Expected publication year (for matching)
         retry_delay: Delay between requests (be polite to API)
         
     Returns:
         Dictionary with verification results:
-        - 'valid': bool
-        - 'title': str (if found)
+        - 'valid': bool (ID exists)
+        - 'matches': bool (metadata matches expected values)
+        - 'title': str (actual title)
+        - 'authors': list (actual authors)
+        - 'year': str (actual year)
+        - 'match_details': dict (what matched/didn't match)
         - 'error': str (if invalid)
         - 'url': str (the checked URL)
     """
@@ -34,11 +88,38 @@ def verify_google_books_id(book_id: str, retry_delay: float = 0.5) -> Dict[str, 
             volume_info = data.get('volumeInfo', {})
             title = volume_info.get('title', 'Unknown')
             authors = volume_info.get('authors', [])
+            published_date = volume_info.get('publishedDate', '')
+            year = published_date[:4] if published_date else ''
+            
+            # Check if metadata matches expected values
+            matches = True
+            match_details = {}
+            
+            if expected_author:
+                author_match = any(fuzzy_match(expected_author, author) for author in authors)
+                match_details['author'] = author_match
+                if not author_match:
+                    matches = False
+            
+            if expected_title:
+                title_match = fuzzy_match(expected_title, title)
+                match_details['title'] = title_match
+                if not title_match:
+                    matches = False
+            
+            if expected_year:
+                year_match = year and abs(int(year) - int(expected_year)) <= 3
+                match_details['year'] = year_match
+                if not year_match:
+                    matches = False
             
             return {
                 'valid': True,
+                'matches': matches,
                 'title': title,
                 'authors': authors,
+                'year': year,
+                'match_details': match_details,
                 'url': f"https://books.google.com/books?id={book_id}",
                 'error': None
             }
